@@ -221,6 +221,10 @@ In the original version, when thread one slept (after doing far less than one ti
 Eventually, thread two (the high-priority thread) is runnable again and it resumes.
 In the version with \c{ThreadSleepNoEarlyWake}, thread two can resume as soon as thread one sleeps.
 Similarly, when thread two yields for the second time, thread one will resume.
+\hugo{
+	I don't quite follow the reason the elapsed cycles is higher when threads aren't allowed to wake early.
+	Is it because the scheduler is tickless, and so with ThreadSleepNoEarlyWake there are fewer timer interrupts consuming cycles?
+}
 
 \section[label=futex]{Waiting for events with futexes}
 
@@ -254,10 +258,11 @@ This will allow other threads to run but the waiting thread remains runnable and
 With an RTOS priority scheduler, if the thread that's waiting is a higher priority than thread that owns the lock then the thread that owns the lock may never be scheduled.
 
 A futex lets the waiting thread sleep.
-The \c{futex_timed_wait} call will compare the value in the futex word to the expected value (one, indicating locked, in this case) and, if they match, will send the thread to sleep and remain asleep until the thread owning the lock will then do a \c{futex_wake} call when unlocking.
+The \c{futex_timed_wait} call will compare the value in the futex word to the expected value (one, indicating locked, in this case) and, if they match, will send the thread to sleep and remain asleep until the thread owning the lock does a \c{futex_wake} call when unlocking.
 
 A more complete futex-based lock uses three values in the lock word to differentiate between locked states with and without waiters.
-This allows the uncontended case to avoid any cross-compartment calls.
+This allows the uncontented case to avoid any cross-compartment calls.
+\hugo{ Why are three values needed here? Why are two not be sufficient? }
 
 Futexes can be used to build other waiting mechanisms beyond locks.
 A \keyword{barrier} is the simplest primitive that you can build with a futex.
@@ -366,7 +371,8 @@ This starts with the high-priority thread shown in \ref{lst:pihigh} running.
 This will sit in a loop, first yielding for up to a second to allow other threads to run, then tries to acquire a lock.
 This example is using \cxx{LockGuard}, a simple RAII wrapper around the RTOS' locks.
 The constructor variant here with two arguments takes a timeout in addition to the lock.
-Lock guards are convertible to \cxx{bool} and convert as \cxx{true} if and only if the lock is acquired.
+Lock guards are convertible to \cxx{bool}, and convert as \cxx{true} if and only if the lock is acquired.
+\hugo{ two 'and's in sentence, added comma for readibility.}
 This allows the thread to print whether the lock was acquired, or it timed out waiting for the lock.
 
 \codelisting[filename=examples/priority_inheritance/priority_inheritance.cc,marker=high,label=lst:pihigh,caption="A high-priority thread that will be starved"]{}
@@ -437,11 +443,14 @@ Most of the time, you will not use this directly and will instead use the priori
 The priority inheritance mechanism can also be used to build asymmetric locks.
 These have a fast path that doesn't do any cross-compartment calls and a slow path that does.
 You can find one example of this in the hazard pointer mechanism for short-lived claims.
+\hugo{ Could add a reference to "Ensuring heap objects are not deallocated" section here, for people wonding what short-lived claims are. }
 This must detect when a thread has tried to add a hazard pointer while the allocator is scanning the list, without slowing down the allocator.
+\hugo{ What list? }
 Before reading the list, the allocator increments the top 16 bits of the futex word and sets the low 16 to the thread ID performing the operation.
 Threads updating the hazard set check the futex word before and after updating the list.
 If the top 16 bits have changed, they know that the allocator has scanned the list and they must retry.
 If the top 16 bits contain an odd value, the allocator is currently scanning the list and they must wait.
+\hugo{ Is the value odd because the allocator also increment the top 16 bits after reading the list as well as before? }
 They can do a priority-inheriting wait with a one-tick timeout \textem{even though the allocator will not ever call \c{futex_wake}}.
 They will yield for one tick, boosting the priority of the thread that's currently in the allocator, but then resume at the end of the tick.
 
@@ -489,6 +498,7 @@ You can then subsequently wait for some of the events to be set with the \c{even
 This takes a set of events to wait for and can wait until either any or all of them are set.
 
 \functiondoc{eventgroup_wait}
+\hugo{ The function declaration uses _Bool as oppose to bool. May as well use stdbool.h like you are stdint.h }
 
 This call can also atomically clear the bits that you've waited on, giving them edge-triggered behaviour.
 
@@ -606,6 +616,7 @@ Instead, the producer waits for the consumer to finish draining the queue and th
 \codelisting[filename=examples/producer_consumer_compartment/producer.cc,marker=queue_cleanup,label=lst:queuemulticompartmentfree,caption="Freeing a message queue once it is empty."]{}
 
 \functiondoc{queue_destroy_sealed}
+\hugo{ This function doc box has a layout overflow in the draft book. }
 
 The corresponding send and receive functions are identical to their library counterparts, but take sealed queue handles.
 Sometimes, it's useful to be able to give one compartment the ability to write to a queue and another the ability to read.

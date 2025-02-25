@@ -691,7 +691,10 @@ They can be unsealed using the token APIs described in \ref{token_apis}.
 The token APIs look as if they're provided by the allocator, but \c{token_obj_unseal} is a fast path implemented as a library.
 This makes it fast to unseal objects (no cross-compartment call).
 It also removes any dependency on the allocator from things that rely on static sealing.
-\hugo{ A little more explanation here would be nice. Something like "The token API's methods normally require a cross compartment call, because ..." before introducing token_obj_unseal. }
+\hugo{
+  A little more explanation here would be nice. Something like "The token API's methods normally require a cross compartment call, because ..." before introducing token_obj_unseal.
+  Could potentially link to section "Allocating on behalf of the caller"?
+}
 
 The allocator provides an example in the RTOS of how you can use this feature.
 When you allocate memory, you pass the allocator a static sealed object that represents your allocation capability, which authorises allocating memory up to a quota.
